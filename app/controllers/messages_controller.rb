@@ -76,8 +76,12 @@ class MessagesController < ApplicationController
     # プロンプトの構築
     prompt_body = <<~BODY
       あなたは世界一のプレスリリース作成者です。
-      ユーザー入力の情報を元に、以下10点を考慮してプレスリリースを作成してください：
+      ユーザー入力の情報を元に、以下10点と補足を考慮してプレスリリースを作成してください：　
+      ※補足には何も記入がなければ、補足については無視してください
 
+      ユーザーの入力: #{message.content}
+
+      ■10項目
       1.プレスリリースの対象となる会社名: #{params[:company_name]}
       2.文字数: #{params[:word_count]}
       3.ターゲットの読者: #{params[:target_audience]}
@@ -87,12 +91,12 @@ class MessagesController < ApplicationController
       7.メインメッセージ: #{params[:main_message]}
       8.このプレスリリースを読んだ人に期待する行動: #{params[:expected_action]}
       9.期待する効果: #{params[:expected_effect]}
-
-      ユーザーの入力: #{message.content}
+      
+      ■補足
     BODY
 
     full_prompt = if gpt_instructions.present?
-                    "#{gpt_instructions}\n\n#{prompt_body}"
+                    "#{prompt_body}\n\n#{gpt_instructions}"
                   else
                     prompt_body
                   end
