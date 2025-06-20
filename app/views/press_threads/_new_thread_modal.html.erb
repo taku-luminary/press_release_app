@@ -1,0 +1,218 @@
+<div id="new-thread-modal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>新しいスレッドを作成</h2>
+      <button type="button" class="close-modal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <%= form_with(model: PressThread.new, class: 'new-thread-form') do |f| %>
+        <div class="form-group">
+          <%= f.label :title, 'スレッド名' %>
+          <%= f.text_field :title, class: 'form-control', required: true %>
+        </div>
+        <div class="form-actions">
+          <%= f.submit '作成', class: 'submit-btn' %>
+          <button type="button" class="cancel-btn">キャンセル</button>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<style>
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background-color: #fff;
+  margin: 15% auto;
+  padding: 20px;
+  width: 400px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.submit-btn, .cancel-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.submit-btn {
+  background-color: #007bff;
+  color: white;
+  border: none;
+}
+
+.cancel-btn {
+  background-color: #f8f9fa;
+  color: #333;
+  border: 1px solid #ddd;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // モーダルを表示する関数
+  window.showNewThreadModal = function() {
+    const modal = document.getElementById('new-thread-modal');
+    modal.style.display = 'block';
+  };
+
+  // モーダルを閉じる関数
+  function closeModal() {
+    const modal = document.getElementById('new-thread-modal');
+    modal.style.display = 'none';
+  }
+
+  // 閉じるボタンのイベントリスナー
+  document.querySelector('.close-modal').addEventListener('click', closeModal);
+  document.querySelector('.cancel-btn').addEventListener('click', closeModal);
+
+  // モーダル外クリックで閉じる
+  window.addEventListener('click', function(e) {
+    const modal = document.getElementById('new-thread-modal');
+    if (e.target === modal) {
+      closeModal();
+    }
+  });
+
+  // フォーム送信処理
+  document.querySelector('.new-thread-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    fetch('/press_threads', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        press_thread: {
+          title: formData.get('press_thread[title]')
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // 他のスレッドのactiveクラスを削除
+        document.querySelectorAll('.thread-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // 新しいスレッドをリストに追加
+        const threadsContainer = document.querySelector('.threads');
+        const newThreadHtml = `
+          <div class="thread-item active" data-thread-id="${data.thread.id}">
+            <div class="thread-content">
+              <a href="#" class="thread-link" data-thread-id="${data.thread.id}">${data.thread.title}</a>
+            </div>
+            <div class="thread-actions">
+              <button type="button" class="delete-thread-btn" data-thread-id="${data.thread.id}">
+                <span class="delete-icon">×</span>
+              </button>
+            </div>
+          </div>
+        `;
+        threadsContainer.insertAdjacentHTML('afterbegin', newThreadHtml);
+
+        // 新しいスレッドのイベントリスナーを設定
+        const newThreadLink = threadsContainer.querySelector(`.thread-link[data-thread-id="${data.thread.id}"]`);
+        newThreadLink.addEventListener('click', function(e) {
+          e.preventDefault();
+          window.switchToThread(data.thread.id, this);
+        });
+
+        const newDeleteBtn = threadsContainer.querySelector(`.delete-thread-btn[data-thread-id="${data.thread.id}"]`);
+        newDeleteBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          if (confirm('このスレッドを削除してもよろしいですか？')) {
+            window.deleteThread(data.thread.id);
+          }
+        });
+
+        // メッセージ表示エリアを更新
+        const contentWrapper = document.getElementById('chat-content-wrapper');
+        if (contentWrapper) {
+          contentWrapper.innerHTML = data.content;
+        }
+
+        // 現在のスレッドIDを設定し、スレッドタイトルを更新
+        window.currentThreadId = data.thread.id;
+        window.updateThreadTitle(data.thread.title);
+        
+        // 新しいスレッドなので9項目は空の状態で開始
+        window.restoreFormValues(data.thread.id);
+
+        // フォームをリセットしてモーダルを閉じる
+        form.reset();
+        closeModal();
+      } else {
+        alert('スレッドの作成に失敗しました。');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('エラーが発生しました。');
+    });
+  });
+});
+</script> 

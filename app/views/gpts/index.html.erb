@@ -1,0 +1,15 @@
+<div class="container mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-8">
+    <h1 class="text-3xl font-bold">GPTs一覧</h1>
+    <%= link_to '新規GPTs作成', new_gpt_path, class: 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded' %>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <% @gpts.each do |gpt| %>
+      <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-xl font-semibold mb-2"><%= gpt.name %></h2>
+        <p class="text-gray-600 mb-4"><%= truncate(gpt.prompt, length: 100) %></p>
+      </div>
+    <% end %>
+  </div>
+</div>

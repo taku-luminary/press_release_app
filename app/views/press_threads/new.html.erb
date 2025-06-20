@@ -1,0 +1,39 @@
+<div class="new-thread-content">
+  <h2>新規スレッド作成</h2>
+  
+  <%= form_with(model: @press_thread, local: false, class: "new-thread-form") do |f| %>
+    <div class="form-group">
+      <%= f.label :title, "スレッドタイトル" %>
+      <%= f.text_field :title, class: "form-control" %>
+    </div>
+
+    <%= f.submit "作成", class: "btn" %>
+  <% end %>
+</div>
+
+<%= javascript_tag do %>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.new-thread-form');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+          'Accept': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.redirect_url) {
+          history.pushState(null, '', data.redirect_url);
+          loadContent(data.redirect_url);
+        }
+      });
+    });
+  });
+<% end %>

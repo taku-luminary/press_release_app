@@ -1,0 +1,70 @@
+<div class="thread-content">
+  <div class="nine-boxes">
+    <div class="item-box"><label>①会社名</label><input type="text" id="company_name" placeholder="例：株式会社〇〇"></div>
+    <div class="item-box"><label>②文字数</label><input type="number" id="word_count" placeholder="例：800"></div>
+    <div class="item-box"><label>③ターゲット読者</label><input type="text" id="target_audience" placeholder="例：20-30代のビジネスパーソン"></div>
+    <div class="item-box"><label>④テキストのトーン</label><input type="text" id="tone" placeholder="例：フォーマル"></div>
+    <div class="item-box"><label>⑤必ず含めてほしいワード</label><input type="text" id="required_words" placeholder="例：イノベーション"></div>
+    <div class="item-box"><label>⑥NGワード</label><input type="text" id="ng_words" placeholder="例：〇〇"></div>
+    <div class="item-box"><label>⑦最も伝えたいメッセージ</label><input type="text" id="main_message" placeholder="例：新サービスの価値"></div>
+    <div class="item-box"><label>⑧期待する読者の行動</label><input type="text" id="expected_action" placeholder="例：問い合わせ"></div>
+    <div class="item-box"><label>⑨期待する効果</label><input type="text" id="expected_effect" placeholder="例：認知度向上"></div>
+  </div>
+
+  <div class="messages">
+    <% @press_thread.messages.each do |message| %>
+      <div class="message <%= message.is_ai ? 'ai' : 'user' %>">
+        <p><%= message.content %></p>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="message-form">
+    <%= form_with(model: [@press_thread, @message], local: false, class: "message-form") do |f| %>
+      <%= f.text_area :content, rows: 5, style: "resize: vertical; width: 100%;" %>
+      <%= f.submit "送信", class: "btn" %>
+    <% end %>
+  </div>
+</div>
+
+<%= javascript_tag do %>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.message-form form');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      const formData = new FormData(form);
+      formData.append('company_name', document.getElementById('company_name').value);
+      formData.append('word_count', document.getElementById('word_count').value);
+      formData.append('target_audience', document.getElementById('target_audience').value);
+      formData.append('tone', document.getElementById('tone').value);
+      formData.append('required_words', document.getElementById('required_words').value);
+      formData.append('ng_words', document.getElementById('ng_words').value);
+      formData.append('main_message', document.getElementById('main_message').value);
+      formData.append('expected_action', document.getElementById('expected_action').value);
+      formData.append('expected_effect', document.getElementById('expected_effect').value);
+
+      fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        const messagesDiv = document.querySelector('.messages');
+        messagesDiv.innerHTML += `
+          <div class="message user">
+            <p>${data.message.content}</p>
+          </div>
+          <div class="message ai">
+            <p>${data.ai_message.content}</p>
+          </div>
+        `;
+        form.reset();
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    });
+  });
+<% end %>

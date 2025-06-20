@@ -1,0 +1,1240 @@
+<%# メインコンテンツ %>
+<div class="main-container">
+  <%# 左サイドバー %>
+  <div class="sidebar">
+    <%# GPTs選択 %>
+    <div class="gpt-selector">
+      <div class="gpt-header">
+        <h3>設定</h3>
+        <button type="button" class="manage-gpt-btn" onclick="showManageGptModal()" title="設定を管理" style="background:none;border:none;color:#333333;font-size:1.2rem;padding:0;cursor:pointer;">
+          ✏︎
+        </button>
+      </div>
+      <select id="gpt-select" class="gpt-select">
+        <% @gpts.each do |gpt| %>
+          <option value="<%= gpt.id %>"><%= gpt.name %></option>
+        <% end %>
+      </select>
+    </div>
+
+    <%# 新しいスレッドボタン %>
+    <button type="button" class="new-thread-btn" onclick="showNewThreadModal()">新しいスレッド</button>
+
+    <%# スレッドリスト %>
+    <div class="thread-list">
+      <div class="thread-header">
+        <h3>スレッド一覧</h3>
+      </div>
+      <div class="threads">
+        <% @press_threads.each do |thread| %>
+          <div class="thread-item <%= 'active' if thread == @press_thread %>" data-thread-id="<%= thread.id %>">
+            <div class="thread-content">
+              <a href="#" class="thread-link" data-thread-id="<%= thread.id %>"><%= thread.title %></a>
+            </div>
+            <div class="thread-actions">
+              <button type="button" class="delete-thread-btn" data-thread-id="<%= thread.id %>">
+                <span class="delete-icon">×</span>
+              </button>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <%# 中央：9項目 %>
+  <div class="nine-boxes" id="nineBoxesPane">
+    <div class="item-box">
+      <label for="company_name">会社名</label>
+      <input type="text" id="company_name" name="company_name" class="form-control" placeholder="例: 株式会社〇〇">
+    </div>
+    <div class="item-box">
+      <label for="word_count">文字数</label>
+      <input type="text" id="word_count" name="word_count" class="form-control" placeholder="例: 400文字程度">
+    </div>
+    <div class="item-box">
+      <label for="target_audience">ターゲット</label>
+      <input type="text" id="target_audience" name="target_audience" class="form-control" placeholder="例: 20-30代のビジネスパーソン">
+    </div>
+    <div class="item-box">
+      <label for="tone">トーン</label>
+      <input type="text" id="tone" name="tone" class="form-control" placeholder="例: 親しみやすく、専門的">
+    </div>
+    <div class="item-box">
+      <label for="required_words">必須ワード</label>
+      <input type="text" id="required_words" name="required_words" class="form-control" placeholder="例: 革新的、効率化、デジタル">
+    </div>
+    <div class="item-box">
+      <label for="ng_words">NGワード</label>
+      <input type="text" id="ng_words" name="ng_words" class="form-control" placeholder="例: 古い、面倒、複雑">
+    </div>
+    <div class="item-box">
+      <label for="main_message">メインメッセージ</label>
+      <input type="text" id="main_message" name="main_message" class="form-control" placeholder="例: 新サービスの魅力をアピール">
+    </div>
+    <div class="item-box">
+      <label for="expected_action">期待する行動</label>
+      <input type="text" id="expected_action" name="expected_action" class="form-control" placeholder="例: サービス資料請求、問い合わせ">
+    </div>
+    <div class="item-box">
+      <label for="expected_effect">期待する効果</label>
+      <input type="text" id="expected_effect" name="expected_effect" class="form-control" placeholder="例: 認知度向上、リード獲得">
+    </div>
+  </div>
+
+  <%# リサイズハンドル %>
+  <div id="columnResizer" class="column-resizer"></div>
+
+  <%# 右側：メッセージ表示エリア %>
+  <div class="chat-main" id="chatMainPane">
+    <!-- 現在のGPT / スレッド表示バー -->
+    <div class="current-info-bar">
+      設定 <span id="current-gpt-name"><%= @gpts.first&.name || '未選択' %></span>
+      &nbsp;|&nbsp;
+      スレッド: <span id="current-thread-title"><%= @press_thread&.title || '未選択' %></span>
+    </div>
+
+    <!-- チャットコンテンツラッパー -->
+    <div id="chat-content-wrapper" style="flex:1;display:flex;flex-direction:column;">
+      <% if @press_thread %>
+        <%= render 'content', press_thread: @press_thread, message: @message %>
+      <% else %>
+        <div class="welcome-message">
+          <h2>プレスリリース作成アシスタントへようこそ</h2>
+          <p>左側の「新しいスレッド」ボタンをクリックして、新しいプレスリリースの作成を始めましょう。</p>
+          <p>または、既存のスレッドを選択して続きから作業を再開できます。</p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<%# モーダル %>
+<%= render 'new_thread_modal' %>
+
+<%# GPT管理モーダル %>
+<div id="manageGptModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeManageGptModal()">&times;</span>
+    <h2>設定 管理</h2>
+
+    <form id="manageGptForm" class="modal-form">
+      <input type="hidden" id="manage_gpt_id">
+
+      <div class="form-group">
+        <label for="manage_gpt_select">設定 選択</label>
+        <select id="manage_gpt_select">
+          <option value="">新規作成</option>
+          <% @gpts.each do |gpt| %>
+            <option value="<%= gpt.id %>"><%= gpt.name %></option>
+          <% end %>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="manage_gpt_name">名前</label>
+        <input type="text" id="manage_gpt_name" required>
+      </div>
+
+      <div class="form-group">
+        <label for="manage_gpt_description">説明</label>
+        <textarea id="manage_gpt_description" rows="2" required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="manage_gpt_instructions">指示</label>
+        <textarea id="manage_gpt_instructions" rows="6" required></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="cancel-btn" onclick="closeManageGptModal()">キャンセル</button>
+        <button type="button" class="delete-btn" onclick="deleteManageGpt()">削除</button>
+        <button type="submit" class="submit-btn">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+.main-container {
+  display: flex;
+  height: 100vh;
+  background-color: #f8f8f8;
+}
+
+.sidebar {
+  width: 300px;
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.gpt-selector {
+  margin-bottom: 1rem;
+}
+
+.gpt-selector h3 {
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #333;
+}
+
+.gpt-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.thread-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+
+
+.threads {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.thread-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.thread-item:hover {
+  background-color: #f5f5f5;
+}
+
+.thread-item.active {
+  background-color: #e8e8e8;
+}
+
+.thread-content {
+  flex: 1;
+  margin-right: 0.5rem;
+}
+
+.thread-link {
+  text-decoration: none;
+  color: #333333;
+  font-size: 0.9rem;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.thread-actions {
+  display: flex;
+  align-items: center;
+}
+
+.delete-thread-btn {
+  background: none;
+  border: none;
+  color: #888888;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.delete-thread-btn:hover {
+  color: #555555;
+}
+
+.new-thread-btn {
+  width: 100%;
+  padding: 0.75rem;
+  background-color: #333333;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.new-thread-btn:hover {
+  background-color: #555555;
+}
+
+.nine-boxes {
+  flex: 0 0 260px;
+  max-width: 380px;
+  min-width: 260px;
+  padding: 0.5rem 0.75rem;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  border-right: 1px solid #e0e0e0;
+  box-sizing: border-box;
+}
+
+.item-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.item-box label {
+  font-size: 0.8rem;
+  color: #666666;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: #666666;
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.5rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+  .form-group input:focus,
+  .form-group select:focus {
+    outline: none;
+    border-color: #666666 !important;
+    box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.25) !important;
+  }
+
+.chat-main {
+  flex: 1 1 70%;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  padding: 1rem;
+}
+
+.welcome-message {
+  text-align: center;
+  padding: 2rem;
+  color: #666666;
+  max-width: 600px;
+  margin: 2rem auto;
+}
+
+.welcome-message h2 {
+  margin-bottom: 1rem;
+  color: #333333;
+  font-size: 1.5rem;
+}
+
+.welcome-message p {
+  margin-bottom: 0.5rem;
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+/* モーダルのスタイル */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  background-color: #ffffff;
+  margin: 5vh auto;
+  padding: 1rem;
+  width: 80%;
+  max-width: 700px;
+  min-width: 320px;
+  max-height: 700px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.close {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  font-size: 1.5rem;
+  color: #888888;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: #333333;
+}
+
+.modal h2 {
+  margin-bottom: 1rem;
+  color: #333333;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.cancel-btn {
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  color: #333333;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.cancel-btn:hover {
+  background-color: #e8e8e8;
+}
+
+.delete-btn {
+  padding: 0.5rem 1rem;
+  background-color: #666666;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: #888888;
+}
+
+.submit-btn {
+  padding: 0.5rem 1rem;
+  background-color: #333333;
+  border: none;
+  border-radius: 4px;
+  color: white;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+
+.submit-btn:hover {
+  background-color: #555555;
+}
+
+.gpt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar .gpt-header h3 {
+  margin: 0 !important;
+  margin-left: 2px !important;
+  font-size: 1rem;
+  color: #333;
+}
+
+.thread-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar .thread-header h3 {
+  margin: 0 !important;
+  margin-left: -15px !important;
+  font-size: 1rem;
+  color: #333;
+}
+
+.manage-gpt-btn {
+  background: none;
+  border: none;
+  color: #333333;
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.manage-gpt-btn:hover {
+  color: #555555;
+}
+
+textarea {
+  padding: 0.5rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  resize: vertical;
+  min-height: 100px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* 説明ボックス専用スタイル */
+#manage_gpt_description {
+  min-height: 50px;
+  height: auto;
+}
+
+  textarea:focus {
+    outline: none;
+    border-color: #666666 !important;
+    box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.25) !important;
+  }
+
+.current-info-bar {
+  padding: 0.5rem 0.75rem;
+  background-color: #f5f5f5;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+  color: #333333;
+}
+
+.column-resizer {
+  width: 6px;
+  cursor: col-resize;
+  background-color: #d0d0d0;
+  border-left: 1px solid #c0c0c0;
+  border-right: 1px solid #c0c0c0;
+}
+
+/* ローディングアニメーション */
+.loading-message {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.loading-animation {
+  display: flex;
+  align-items: center;
+  margin-right: 15px;
+}
+
+.loading-animation div {
+  width: 8px;
+  height: 8px;
+  background-color: #666666;
+  border-radius: 50%;
+  margin: 0 3px;
+  animation: loading-bounce 1.4s infinite ease-in-out both;
+}
+
+.loading-animation .dot1 {
+  animation-delay: -0.32s;
+}
+
+.loading-animation .dot2 {
+  animation-delay: -0.16s;
+}
+
+@keyframes loading-bounce {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+.loading-text {
+  font-size: 0.9rem;
+  color: #666666;
+  font-weight: 500;
+}
+
+.item-box label {
+  font-size: 0.8rem;
+  color: #666666;
+}
+
+.form-control {
+  padding: 0.35rem 0.4rem;
+  border: 1px solid #d0d0d0;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+  .form-control:focus {
+    outline: none;
+    border-color: #666666 !important;
+    box-shadow: 0 0 0 2px rgba(102, 102, 102, 0.25) !important;
+  }
+</style>
+
+<script>
+// GPTsデータをフロントに埋め込む
+const gptsData = <%= raw(@gpts.to_json(only: [:id, :name, :description, :instructions])) %>;
+
+document.addEventListener('DOMContentLoaded', function() {
+  // メッセージを最下部にスクロール
+  function scrollToBottom() {
+    const messages = document.querySelector('.messages');
+    if (messages) {
+      messages.scrollTop = messages.scrollHeight;
+    }
+  }
+
+  // 初期表示時に最下部にスクロール
+  scrollToBottom();
+
+  // スレッド削除
+  document.querySelectorAll('.delete-thread-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const threadId = this.dataset.threadId;
+      if (confirm('このスレッドを削除してもよろしいですか？')) {
+        window.deleteThread(threadId);
+      }
+    });
+  });
+
+  function deleteThread(threadId) {
+    fetch(`/press_threads/${threadId}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const threadItem = document.querySelector(`.thread-item[data-thread-id="${threadId}"]`);
+        if (threadItem) {
+          threadItem.remove();
+        }
+        // 最初のスレッドを読み込む
+        const firstThread = document.querySelector('.thread-item');
+        if (firstThread) {
+          const firstThreadLink = firstThread.querySelector('.thread-link');
+          if (firstThreadLink) {
+            window.switchToThread(firstThread.dataset.threadId, firstThreadLink);
+          }
+        } else {
+          // スレッドが存在しない場合はウェルカムメッセージを表示
+          document.getElementById('chat-content-wrapper').innerHTML = `
+            <div class="welcome-message">
+              <h2>プレスリリース作成アシスタントへようこそ</h2>
+              <p>左側の「新しいスレッド」ボタンをクリックして、新しいプレスリリースの作成を始めましょう。</p>
+              <p>または、既存のスレッドを選択して続きから作業を再開できます。</p>
+            </div>
+          `;
+          window.updateThreadTitle('未選択');
+        }
+      }
+    })
+    .catch(error => console.error('Error:', error));
+  }
+
+  // グローバルに公開
+  window.deleteThread = deleteThread;
+
+  // メッセージ送信フォームの処理
+  document.addEventListener('submit', function(e) {
+    if (e.target.classList.contains('message-form')) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const threadId = form.dataset.threadId;
+
+      // フォームを無効化
+      const textarea = form.querySelector('.message-textarea');
+      const submitButton = form.querySelector('.send-button');
+      textarea.disabled = true;
+      submitButton.disabled = true;
+
+      // ローディングメッセージを表示
+      const loadingMessage = document.createElement('div');
+      loadingMessage.className = 'loading-message';
+      loadingMessage.innerHTML = `
+        <div class="loading-animation">
+          <div class="dot1"></div>
+          <div class="dot2"></div>
+          <div class="dot3"></div>
+        </div>
+        <span class="loading-text">回答を生成中...</span>
+      `;
+      const messagesContainer = document.querySelector('.messages');
+      messagesContainer.appendChild(loadingMessage);
+      scrollToBottom();
+
+      fetch(`/press_threads/${threadId}/messages`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message: {
+            content: formData.get('message[content]'),
+            press_thread_id: threadId
+          },
+          company_name: document.getElementById('company_name').value,
+          word_count: document.getElementById('word_count').value,
+          target_audience: document.getElementById('target_audience').value,
+          tone: document.getElementById('tone').value,
+          required_words: document.getElementById('required_words').value,
+          ng_words: document.getElementById('ng_words').value,
+          main_message: document.getElementById('main_message').value,
+          expected_action: document.getElementById('expected_action').value,
+          expected_effect: document.getElementById('expected_effect').value,
+          gpt_id: document.getElementById('gpt-select').value
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('chat-content-wrapper').innerHTML = data.content;
+          // form.reset(); を削除して9項目の値を保持
+          // メッセージ入力欄のみリセット
+          const messageTextarea = form.querySelector('.message-textarea');
+          if (messageTextarea) {
+            messageTextarea.value = '';
+          }
+          scrollToBottom();
+        } else {
+          alert('メッセージの送信に失敗しました。');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('エラーが発生しました。');
+      })
+      .finally(() => {
+        // ローディングメッセージを削除
+        const loadingMessage = document.querySelector('.loading-message');
+        if (loadingMessage) {
+          loadingMessage.remove();
+        }
+        // フォームを再有効化
+        textarea.disabled = false;
+        submitButton.disabled = false;
+        textarea.focus();
+      });
+    }
+  });
+
+  // GPTs作成モーダルの制御
+  window.showNewGptModal = function() {
+    document.getElementById('newGptModal').style.display = 'block';
+  }
+
+  window.closeNewGptModal = function() {
+    document.getElementById('newGptModal').style.display = 'none';
+  }
+
+  // GPTs作成フォームの送信処理
+  const oldNewGptFormElem = document.getElementById('newGptForm');
+  if (oldNewGptFormElem) oldNewGptFormElem.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+
+    fetch('/gpts', {
+      method: 'POST',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        gpt: {
+          name: formData.get('gpt[name]'),
+          description: formData.get('gpt[description]'),
+          instructions: formData.get('gpt[instructions]')
+        }
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // セレクトボックスに新しいGPTsを追加
+        const select = document.getElementById('gpt-select');
+        const option = new Option(data.gpt.name, data.gpt.id);
+        select.add(option);
+        select.value = data.gpt.id;
+
+        // モーダルを閉じる
+        closeNewGptModal();
+        // フォームをリセット
+        this.reset();
+
+        // インフォバーを更新
+        const infoSpan = document.getElementById('current-gpt-name');
+        if(infoSpan){ infoSpan.textContent = data.gpt.name; }
+      } else {
+        alert('GPTsの作成に失敗しました。');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('エラーが発生しました。');
+    });
+  });
+
+  // モーダル外クリックで閉じる
+  window.onclick = function(event) {
+    const newGptModal = document.getElementById('newGptModal');
+    if (event.target == newGptModal) {
+      closeNewGptModal();
+    }
+  }
+
+  // 現在のスレッドIDを保持する変数
+  let currentThreadId = null;
+  window.currentThreadId = currentThreadId;
+
+  // localStorage関連の関数
+  function getThreadFormData() {
+    const stored = localStorage.getItem('threadFormData');
+    return stored ? JSON.parse(stored) : {};
+  }
+
+  function setThreadFormData(data) {
+    localStorage.setItem('threadFormData', JSON.stringify(data));
+  }
+
+  // 現在の9項目の値を保存
+  function saveCurrentFormValues() {
+    if (!currentThreadId) {
+      console.log('currentThreadIdが設定されていません');
+      return;
+    }
+    
+    const threadFormData = getThreadFormData();
+    const formData = {
+      company_name: document.getElementById('company_name').value,
+      word_count: document.getElementById('word_count').value,
+      target_audience: document.getElementById('target_audience').value,
+      tone: document.getElementById('tone').value,
+      required_words: document.getElementById('required_words').value,
+      ng_words: document.getElementById('ng_words').value,
+      main_message: document.getElementById('main_message').value,
+      expected_action: document.getElementById('expected_action').value,
+      expected_effect: document.getElementById('expected_effect').value
+    };
+    threadFormData[currentThreadId] = formData;
+    setThreadFormData(threadFormData);
+    console.log(`スレッド${currentThreadId}のデータを保存:`, formData);
+  }
+
+  // スレッドの9項目の値を復元
+  function restoreFormValues(threadId) {
+    currentThreadId = threadId;
+    window.currentThreadId = currentThreadId;
+    
+    const threadFormData = getThreadFormData();
+    console.log('全スレッドデータ:', threadFormData);
+    
+    if (threadFormData[threadId]) {
+      const data = threadFormData[threadId];
+      console.log(`スレッド${threadId}のデータを復元:`, data);
+      document.getElementById('company_name').value = data.company_name || '';
+      document.getElementById('word_count').value = data.word_count || '';
+      document.getElementById('target_audience').value = data.target_audience || '';
+      document.getElementById('tone').value = data.tone || '';
+      document.getElementById('required_words').value = data.required_words || '';
+      document.getElementById('ng_words').value = data.ng_words || '';
+      document.getElementById('main_message').value = data.main_message || '';
+      document.getElementById('expected_action').value = data.expected_action || '';
+      document.getElementById('expected_effect').value = data.expected_effect || '';
+    } else {
+      console.log(`スレッド${threadId}のデータが見つかりません。空の値を設定します。`);
+      // 新しいスレッドの場合は空にする
+      document.getElementById('company_name').value = '';
+      document.getElementById('word_count').value = '';
+      document.getElementById('target_audience').value = '';
+      document.getElementById('tone').value = '';
+      document.getElementById('required_words').value = '';
+      document.getElementById('ng_words').value = '';
+      document.getElementById('main_message').value = '';
+      document.getElementById('expected_action').value = '';
+      document.getElementById('expected_effect').value = '';
+    }
+  }
+
+  // グローバルに公開
+  window.restoreFormValues = restoreFormValues;
+
+  // 初期表示時にインフォバーを更新
+  const gptSelect = document.getElementById('gpt-select');
+  const currentGptNameSpan = document.getElementById('current-gpt-name');
+
+  function updateGptName() {
+    const selectedOption = gptSelect.options[gptSelect.selectedIndex];
+    currentGptNameSpan.textContent = selectedOption ? selectedOption.text : '未選択';
+  }
+
+  // スレッドタイトルを更新する関数
+  function updateThreadTitle(title) {
+    const threadTitleElement = document.getElementById('current-thread-title');
+    if (threadTitleElement) {
+      threadTitleElement.textContent = title;
+    }
+  }
+
+  // グローバルに公開
+  window.updateThreadTitle = updateThreadTitle;
+
+  // 初期表示
+  updateGptName();
+  const activeThread = document.querySelector('.thread-item.active');
+  if (activeThread) {
+    currentThreadId = activeThread.dataset.threadId;
+    window.currentThreadId = currentThreadId;
+    console.log('初期スレッドID:', currentThreadId);
+    const activeThreadLink = activeThread.querySelector('.thread-link');
+    updateThreadTitle(activeThreadLink ? activeThreadLink.textContent : '未選択');
+    // ページロード時に保存済みの値を復元
+    restoreFormValues(currentThreadId);
+  } else {
+    console.log('アクティブなスレッドが見つかりません');
+  }
+
+  // 既存のスレッドリンクにクリックイベントを設定
+  document.querySelectorAll('.thread-link').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const threadId = this.dataset.threadId;
+      window.switchToThread(threadId, this);
+    });
+  });
+
+  // GPT変更時
+  gptSelect.addEventListener('change', updateGptName);
+
+  // GPT編集ページへ遷移
+  window.goEditGptPage = function() {
+    const select = document.getElementById('gpt-select');
+    if (!select.value) { alert('GPTを選択してください'); return; }
+    window.location.href = `/gpts/${select.value}/edit`;
+  }
+
+  /************** GPTs 管理モーダル **************/
+
+  // モーダル表示/非表示
+  window.showManageGptModal = function() {
+    populateManageSelect();
+    clearManageForm();
+    document.getElementById('manageGptModal').style.display = 'block';
+  }
+
+  window.closeManageGptModal = function() {
+    document.getElementById('manageGptModal').style.display = 'none';
+  }
+
+  // セレクトを再描画
+  function populateManageSelect() {
+    const select = document.getElementById('manage_gpt_select');
+    if (!select) return;
+    select.innerHTML = '<option value="">新規作成</option>';
+    gptsData.forEach(g => {
+      const opt = document.createElement('option');
+      opt.value = g.id;
+      opt.textContent = g.name;
+      select.appendChild(opt);
+    });
+  }
+
+  function clearManageForm() {
+    document.getElementById('manage_gpt_id').value = '';
+    document.getElementById('manage_gpt_name').value = '';
+    document.getElementById('manage_gpt_description').value = '';
+    document.getElementById('manage_gpt_instructions').value = '';
+    const select = document.getElementById('manage_gpt_select');
+    if (select) select.value = '';
+  }
+
+  // セレクト変更でフォームに反映
+  const manageSelectElem = document.getElementById('manage_gpt_select');
+  if (manageSelectElem) manageSelectElem.addEventListener('change', function() {
+    const id = this.value;
+    if (!id) { clearManageForm(); return; }
+    const g = gptsData.find(x => x.id == id);
+    if (!g) return;
+    document.getElementById('manage_gpt_id').value = g.id;
+    document.getElementById('manage_gpt_name').value = g.name;
+    document.getElementById('manage_gpt_description').value = g.description || '';
+    document.getElementById('manage_gpt_instructions').value = g.instructions || '';
+  });
+
+  // フォーム送信（作成/更新）
+  const manageFormElem = document.getElementById('manageGptForm');
+  if (manageFormElem) manageFormElem.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('manage_gpt_id').value;
+    const payload = {
+      gpt: {
+        name: document.getElementById('manage_gpt_name').value,
+        description: document.getElementById('manage_gpt_description').value,
+        instructions: document.getElementById('manage_gpt_instructions').value
+      }
+    };
+
+    const method = id ? 'PATCH' : 'POST';
+    const url = id ? `/gpts/${id}` : '/gpts';
+
+    fetch(url, {
+      method: method,
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        if (id) {
+          // 更新
+          const g = gptsData.find(x => x.id == id);
+          if (g) {
+            g.name = payload.gpt.name;
+            g.description = payload.gpt.description;
+            g.instructions = payload.gpt.instructions;
+          }
+        } else {
+          // 新規
+          gptsData.push({ id: data.gpt.id, name: payload.gpt.name, description: payload.gpt.description, instructions: payload.gpt.instructions });
+        }
+        refreshGptSelect();
+        closeManageGptModal();
+      } else {
+        alert('保存に失敗しました');
+      }
+    }).catch(() => alert('通信エラーが発生しました'));
+  });
+
+  // 削除
+  window.deleteManageGpt = function() {
+    const id = document.getElementById('manage_gpt_id').value;
+    if (!id) { alert('削除対象のGPTを選択してください'); return; }
+    if (!confirm('本当に削除しますか？')) return;
+    fetch(`/gpts/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json'
+      }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const idx = gptsData.findIndex(x => x.id == id);
+        if (idx > -1) gptsData.splice(idx, 1);
+        refreshGptSelect();
+        populateManageSelect();
+        clearManageForm();
+      } else {
+        alert('削除に失敗しました');
+      }
+    }).catch(() => alert('通信エラーが発生しました'));
+  }
+
+  // gpt-select を最新化
+  function refreshGptSelect() {
+    const select = document.getElementById('gpt-select');
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = '';
+    gptsData.forEach(g => {
+      const opt = new Option(g.name, g.id);
+      select.add(opt);
+    });
+    if (current) select.value = current;
+    updateGptName();
+  }
+
+  /************** カラムリサイズ **************/
+  const resizer = document.getElementById('columnResizer');
+  const leftPane = document.getElementById('nineBoxesPane');
+  const rightPane = document.getElementById('chatMainPane');
+  const mainContainer = document.querySelector('.main-container');
+
+  if (resizer && leftPane && rightPane && mainContainer) {
+    let isResizing = false;
+    let startX = 0;
+    let startLeftWidth = 0;
+
+    resizer.addEventListener('mousedown', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      isResizing = true;
+      startX = e.clientX;
+      startLeftWidth = leftPane.offsetWidth;
+      
+      // カーソルを変更
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+
+      document.addEventListener('mousemove', onDrag);
+      document.addEventListener('mouseup', stopDrag);
+    });
+
+    function onDrag(e) {
+      if (!isResizing) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const dx = e.clientX - startX;
+      let newLeftWidth = startLeftWidth + dx;
+
+      const containerWidth = mainContainer.offsetWidth;
+      const resizerWidth = resizer.offsetWidth;
+      const minWidth = 200;
+      const maxWidth = containerWidth * 0.7;
+      
+      // 幅を制限
+      newLeftWidth = Math.max(minWidth, Math.min(maxWidth, newLeftWidth));
+
+      // フレックスボックスの値を更新
+      const rightWidth = containerWidth - newLeftWidth - resizerWidth;
+      
+      leftPane.style.width = `${newLeftWidth}px`;
+      leftPane.style.flex = 'none';
+      rightPane.style.width = `${rightWidth}px`;
+      rightPane.style.flex = 'none';
+    }
+
+    function stopDrag(e) {
+      if (!isResizing) return;
+      
+      e.preventDefault();
+      e.stopPropagation();
+      
+      isResizing = false;
+      
+      // カーソルを元に戻す
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      
+      document.removeEventListener('mousemove', onDrag);
+      document.removeEventListener('mouseup', stopDrag);
+    }
+
+    // ウィンドウリサイズ時の調整
+    window.addEventListener('resize', function() {
+      if (!isResizing) {
+        // リサイズが発生していない場合のみ調整
+        const containerWidth = mainContainer.offsetWidth;
+        const leftWidth = leftPane.offsetWidth;
+        const resizerWidth = resizer.offsetWidth;
+        
+        if (leftWidth > containerWidth * 0.7) {
+          const newLeftWidth = containerWidth * 0.3;
+          const rightWidth = containerWidth - newLeftWidth - resizerWidth;
+          
+          leftPane.style.width = `${newLeftWidth}px`;
+          rightPane.style.width = `${rightWidth}px`;
+        }
+      }
+    });
+  }
+
+  // 9項目の値が変更されたときに自動保存
+  const formFields = ['company_name', 'word_count', 'target_audience', 'tone', 'required_words', 'ng_words', 'main_message', 'expected_action', 'expected_effect'];
+  formFields.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (field) {
+      field.addEventListener('input', function() {
+        if (currentThreadId) {
+          saveCurrentFormValues();
+        }
+      });
+    }
+  });
+
+  // スレッド切り替え関数をグローバルに定義
+  window.switchToThread = function(threadId, element) {
+    console.log('スレッド切り替え:', threadId, 'from:', currentThreadId);
+    
+    // 現在のスレッドのフォーム値を保存
+    saveCurrentFormValues();
+    
+    // 他のスレッドのactiveクラスを削除
+    document.querySelectorAll('.thread-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    
+    // 新しいスレッドをアクティブにする
+    element.closest('.thread-item').classList.add('active');
+    
+    // スレッドのメッセージを読み込み
+    fetch(`/press_threads/${threadId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      document.getElementById('chat-content-wrapper').innerHTML = data.content;
+      // スレッドタイトルを更新
+      updateThreadTitle(element.textContent);
+      // 新しいスレッドの値を復元（この中でcurrentThreadIdが更新される）
+      restoreFormValues(threadId);
+      // メッセージエリアを最下部にスクロール
+      const messagesArea = document.getElementById('messages-area');
+      if (messagesArea) {
+        messagesArea.scrollTop = messagesArea.scrollHeight;
+      }
+    })
+    .catch(error => console.error('Error:', error));
+  };
+});
+</script>
