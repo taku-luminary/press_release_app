@@ -89,9 +89,9 @@
   <div class="chat-main" id="chatMainPane">
     <!-- 現在のGPT / スレッド表示バー -->
     <div class="current-info-bar">
-      設定 <span id="current-gpt-name"><%= @gpts.first&.name || '未選択' %></span>
+      設定： <span id="current-gpt-name"><%= @gpts.first&.name || '未選択' %></span>
       &nbsp;|&nbsp;
-      スレッド: <span id="current-thread-title"><%= @press_thread&.title || '未選択' %></span>
+      スレッド： <span id="current-thread-title"><%= @press_thread&.title || '未選択' %></span>
     </div>
 
     <!-- チャットコンテンツラッパー -->
