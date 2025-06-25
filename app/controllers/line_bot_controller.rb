@@ -73,24 +73,70 @@ class LineBotController < ApplicationController
     # ユーザー発言保存
     press_thread.messages.create!(content: user_text, role: 'user')
 
-    # すぐに「生成中」メッセージを返信
-    waiting_reply = Line::Bot::V2::MessagingApi::ReplyMessageRequest.new(
-      reply_token: event.reply_token,
-      messages: [
-        Line::Bot::V2::MessagingApi::TextMessage.new(text: 'ただいま生成中です…')
-      ]
-    )
-    begin
-      res = line_client.reply_message(reply_message_request: waiting_reply)
-      Rails.logger.info("[LINE] waiting_reply status: "+res.inspect)
-    rescue => e
-      Rails.logger.error("[LINE] waiting_reply error: #{e.message}\n#{e.backtrace.join("\n")}")
-    end
+    meta = press_thread.meta || {}
+    stage = meta['stage'] || 'start'
+    params_collected = meta['params'] || {}
 
-    # 非同期ジョブで生成 & push
-    PressReleaseJob.perform_later(user_id, user_text, press_thread.id)
+    case stage
+    when 'start'
+      # 最初のユーザーメッセージを保持
+      params_collected['content'] = user_text
+
+      meta['stage'] = 'ask_company'
+      meta['params'] = params_collected
+      press_thread.update!(meta: meta)
+
+      reply_text = "会社名を教えてください\n例：〇〇株式会社"
+      press_thread.messages.create!(content: reply_text, role: 'assistant')
+      send_reply(event.reply_token, reply_text)
+
+    when 'ask_company'
+      params_collected['company_name'] = user_text
+      meta['params'] = params_collected
+      meta['stage'] = 'ask_word_count'
+      press_thread.update!(meta: meta)
+
+      reply_text = "文字数を教えてください\n例：3000文字"
+      press_thread.messages.create!(content: reply_text, role: 'assistant')
+      send_reply(event.reply_token, reply_text)
+
+    when 'ask_word_count'
+      params_collected['word_count'] = user_text
+      meta['params'] = params_collected
+      meta['stage'] = 'generating'
+      press_thread.update!(meta: meta)
+
+      # 生成中メッセージ
+      generating_msg = 'ただいま生成中です…'
+      press_thread.messages.create!(content: generating_msg, role: 'assistant')
+      send_reply(event.reply_token, generating_msg)
+
+      # 非同期ジョブで生成
+      PressReleaseJob.perform_later(user_id, params_collected, press_thread.id)
+
+    else
+      # 不明・完了ステータスのため新しいフローを開始
+      meta = {
+        'stage' => 'ask_company',
+        'params' => { 'content' => user_text }
+      }
+      press_thread.update!(meta: meta)
+
+      reply_text = "会社名を教えてください\n例：〇〇株式会社"
+      press_thread.messages.create!(content: reply_text, role: 'assistant')
+      send_reply(event.reply_token, reply_text)
+    end
   rescue => e
     Rails.logger.error("[LINE] handle_text_message エラー: #{e.message}\n#{e.backtrace.join("\n")}")
+  end
+
+  # 返信ヘルパー
+  def send_reply(reply_token, text)
+    req = Line::Bot::V2::MessagingApi::ReplyMessageRequest.new(
+      reply_token: reply_token,
+      messages: [Line::Bot::V2::MessagingApi::TextMessage.new(text: text)]
+    )
+    line_client.reply_message(reply_message_request: req)
   end
 
   # 旧 ai_generate_response は PressReleaseService へ移行

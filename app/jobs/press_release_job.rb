@@ -6,14 +6,16 @@ class PressReleaseJob < ApplicationJob
   # user_id: LINE userId（push 送付先）
   # user_text: 受信した本文
   # press_thread_id: 保存用スレッドID
-  def perform(user_id, user_text, press_thread_id)
+  def perform(user_id, collected_params, press_thread_id)
     service_params = {
-      company_name: '', word_count: '', target_audience: '', tone: '',
-      required_words: '', ng_words: '', main_message: '', expected_action: '',
-      expected_effect: '', gpt_id: nil
+      company_name: collected_params['company_name'] || '',
+      word_count: collected_params['word_count'] || '',
+      target_audience: '', tone: '', required_words: '', ng_words: '',
+      main_message: '', expected_action: '', expected_effect: '', gpt_id: nil
     }
 
-    ai_response = PressReleaseService.generate(user_text, service_params)
+    original_content = collected_params['content'] || ''
+    ai_response = PressReleaseService.generate(original_content, service_params)
 
     # 保存
     press_thread = PressThread.find_by(id: press_thread_id)
