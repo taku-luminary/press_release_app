@@ -154,6 +154,9 @@ GEM
       actionview (>= 5.0.0)
       activesupport (>= 5.0.0)
     json (2.12.2)
+    line-bot-api (2.0.0)
+      base64 (~> 0.2)
+      multipart-post (~> 2.4)
     llhttp-ffi (0.5.1)
       ffi-compiler (~> 1.0)
       rake (~> 13.0)
@@ -338,6 +341,7 @@ DEPENDENCIES
   http
   importmap-rails
   jbuilder
+  line-bot-api
   mysql2 (~> 0.5)
   pg
   pry-rails

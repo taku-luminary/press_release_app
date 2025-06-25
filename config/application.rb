@@ -31,7 +31,9 @@ module PressReleaseApp
         File.readlines(env_file).each do |line|
           next if line.strip.empty? || line.start_with?('#')
           key, value = line.strip.split('=', 2)
-          ENV[key] = value
+          # .env の値が空の場合や既に ENV に設定済みの場合は上書きしない
+          next if value.nil? || value.empty?
+          ENV[key] ||= value
         end
       end
     end

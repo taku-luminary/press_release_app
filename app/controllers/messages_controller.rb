@@ -101,32 +101,11 @@ class MessagesController < ApplicationController
                     prompt_body
                   end
 
-    http_response = openai_api_call(full_prompt)
-
-    unless http_response.status.success?
-      raise "OpenAI API Error: HTTP #{http_response.status} - #{http_response.body.to_s}"
-    end
-
-    body = JSON.parse(http_response.body.to_s)
-    body.dig('choices', 0, 'message', 'content')
+    PressReleaseService.generate(message.content, params)
   rescue => e
     Rails.logger.error "OpenAI API Error: #{e.message}"
     "申し訳ありません。AIの応答生成中にエラーが発生しました。\n\n#{e.message}"
   end
 
-  # OpenAI API 直接呼び出し
-  def openai_api_call(prompt)
-    HTTP.post(
-      'https://api.openai.com/v1/chat/completions',
-      headers: {
-        'Content-Type' => 'application/json',
-        'Accept' => 'application/json',
-        'Authorization' => "Bearer #{ENV['OPENAI_API_KEY']}"
-      },
-      json: {
-        model: "gpt-4o",
-        messages: [{ role: "user", content: prompt }]
-      }
-    )
-  end
+  # 旧 openai_api_call は PressReleaseService に移行済み
 end
